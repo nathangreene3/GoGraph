@@ -79,36 +79,6 @@ func main() {
 	fmt.Println(H)
 }
 
-// func getMinSpanTree(G graph) (MST graph){
-// 	MST=graph{
-// 		vertices:copyVertices(G.vertices)
-// 	}
-// 	return MST
-// }
-
-// func copyVertices(G graph) (Vs []vertex) {
-// 	n := len(G.vertices)
-// 	Vs = make([]vertex, n)
-// 	for i := 0; i < n; i++ {
-// 		Vs[i] = copyVertex(G.vertices[i])
-// 	}
-// }
-
-func (G graph) Less(i, j int) (less bool) {
-	if dist(G, G.edges[i]) < dist(G, G.edges[j]) {
-		less = true
-	}
-	return less
-}
-
-func (G graph) Swap(i, j int) {
-	G.edges[i], G.edges[j] = G.edges[j], G.edges[i]
-}
-
-func (G graph) Len() int {
-	return len(G.edges)
-}
-
 // makeCompleteGraph returns a complete graph consisting of the set of vertices.
 func makeCompleteGraph(Vs []vertex) (G graph) {
 	n := len(Vs)
@@ -152,4 +122,22 @@ func distMatrix(G graph) (A [][]float64) {
 		A[G.edges[i].right][G.edges[i].left] = v
 	}
 	return A
+}
+
+// Less returns true if the ith edge has a shorter length than the jth edge.
+func (G graph) Less(i, j int) (less bool) {
+	if dist(G, G.edges[i]) < dist(G, G.edges[j]) {
+		less = true
+	}
+	return less
+}
+
+// Swap swaps the ith and jth edges.
+func (G graph) Swap(i, j int) {
+	G.edges[i], G.edges[j] = G.edges[j], G.edges[i]
+}
+
+// Len returns the number of edges.
+func (G graph) Len() int {
+	return len(G.edges)
 }
