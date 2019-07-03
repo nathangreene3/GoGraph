@@ -9,13 +9,18 @@ import (
 // Interface gives functionality to vertices.
 type Interface interface {
 	Comparable
+	Equatable
 	Duplicatable
 }
 
-// Comparable defines the context for equality.
+// Comparable defines the context for comparison.
 type Comparable interface {
 	CompareTo(x Comparable) int
-	Equals(x Comparable) bool
+}
+
+// Equatable defines the context for equality.
+type Equatable interface {
+	Equals(x Equatable) bool
 }
 
 // Duplicatable defines the context for copying.
