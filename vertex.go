@@ -1,60 +1,137 @@
-package main
+package graph
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
 
-// A Vertex is a point with connections to other vertices.
+// Interface gives functionality to vertices.
+type Interface interface {
+	Comparable
+	Duplicatable
+}
+
+// Comparable defines the context for equality.
+type Comparable interface {
+	CompareTo(x Comparable) int
+	Equals(x Comparable) bool
+}
+
+// Duplicatable defines the context for copying.
+type Duplicatable interface {
+	Copy() Duplicatable
+}
+
+// A Vertex is a value with connections to other vertices.
 type Vertex struct {
-	point       Point
-	color       Color
-	connections []*Vertex
+	value               Interface
+	in, out             []*Vertex
+	inDegree, outDegree int
 }
 
-// connect adds a vertex as a connection. The color is not assigned. The connection is directional, that is u points to v, but v does not point to u.
-func (v *Vertex) connect(u *Vertex) {
-	if !v.connected(u) {
-		v.connections = append(v.connections, u)
-		v.sortConnections()
+// NewVertex returns a vertex defined by a value.
+func NewVertex(value Interface) *Vertex {
+	return &Vertex{
+		value: value,
+		in:    []*Vertex{},
+		out:   []*Vertex{},
 	}
 }
 
-// connected determines if v points to u.
-func (v *Vertex) connected(u *Vertex) bool {
-	n := len(v.connections)
-	if sort.Search(n, func(i int) bool { return CompareVertices(v.connections[i], u) <= 0 }) < n {
-		return true
+// String returns the string representation of a vertex.
+func (v *Vertex) String() string {
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("Value: %v\n", v.value))
+	for j, u := range v.out {
+		b.WriteString(fmt.Sprintf("Connection %d: %v\n", j, u.value))
 	}
-
-	return false
+	return b.String()
 }
 
-// assignColor sets the color.
-func (v *Vertex) assignColor(color Color) {
-	v.color = color
+// Connect adds a vertex as a connection.
+func (v *Vertex) Connect(u *Vertex) {
+	if _, ok := v.PointsTo(u); !ok {
+		v.out = append(v.out, u)
+		u.in = append(u.in, v)
+		v.Sort()
+		u.Sort()
+	}
 }
 
-// CompareVertices returns -1, 0, or 1 indicating if u precedes, is equal to, or follows v.
-func CompareVertices(u, v *Vertex) int {
-	if u == v {
+// PointsTo determines if v points to u.
+func (v *Vertex) PointsTo(u *Vertex) (int, bool) {
+	switch v.outDegree {
+	case 0:
+		return 0, false
+	default:
+		index := v.SearchOut(u.value)
+		return index, index < v.outDegree
+	}
+}
+
+// ComesFrom determines if v comes from u.
+func (v *Vertex) ComesFrom(u *Vertex) (int, bool) {
+	switch v.inDegree {
+	case 0:
+		return 0, false
+	default:
+		index := v.SearchIn(u.value)
+		return index, index < v.inDegree
+	}
+}
+
+// Disconnect removes a connected vertex and returns it.
+func (v *Vertex) Disconnect(i int) Interface {
+	value := v.out[i].value
+	if i+1 < v.outDegree {
+		v.out = append(v.out[:i], v.out[i+1:]...)
+	} else {
+		v.out = v.out[:i]
+	}
+	v.outDegree--
+	return value
+}
+
+// CompareTo returns -1, 0, or 1 indicating if v precedes, is equal to, or follows u.
+func (v *Vertex) CompareTo(u *Vertex) int {
+	if v == u {
 		return 0
 	}
-
-	return ComparePoints(u.point, v.point)
+	return v.value.CompareTo(u.value)
 }
 
-// sortConnections sorts the connections.
-func (v *Vertex) sortConnections() {
-	sort.SliceStable(v.connections, func(i, j int) bool { return CompareVertices(v.connections[i], v.connections[j]) < 0 })
+// Equals returns true if v and u have equal values.
+func (v *Vertex) Equals(u *Vertex) bool {
+	return v.CompareTo(u) == 0
 }
 
-// copyVertex returns a copy of a vertex.
-func copyVertex(v *Vertex) *Vertex {
-	cpy := &Vertex{
-		point:       make(Point, len(v.point)),
-		color:       v.color,
-		connections: make([]*Vertex, len(v.connections)),
+// SearchIn ...
+func (v *Vertex) SearchIn(x Interface) int {
+	return sort.Search(v.inDegree, func(i int) bool { return 0 < v.in[i].value.CompareTo(x) })
+}
+
+// SearchOut a vertex's out connections for a value. Returns an index on the range [0,len) if found and len if not found.
+func (v *Vertex) SearchOut(x Interface) int {
+	return sort.Search(v.outDegree, func(i int) bool { return 0 < v.out[i].value.CompareTo(x) })
+}
+
+// Sort sorts the connections.
+func (v *Vertex) Sort() {
+	sort.SliceStable(v.in, func(i, j int) bool { return v.in[i].CompareTo(v.in[j]) < 0 })
+	sort.SliceStable(v.out, func(i, j int) bool { return v.out[i].CompareTo(v.out[j]) < 0 })
+}
+
+// Copy returns a copy of a vertex.
+func (v *Vertex) Copy() *Vertex {
+	u := &Vertex{
+		value:     v.value.Copy().(Interface),
+		in:        make([]*Vertex, v.inDegree),
+		out:       make([]*Vertex, v.outDegree),
+		inDegree:  v.inDegree,
+		outDegree: v.outDegree,
 	}
-
-	copy(cpy.point, v.point)
-	copy(cpy.connections, v.connections)
-	return cpy
+	copy(u.in, v.in)
+	copy(u.out, v.out)
+	return u
 }
